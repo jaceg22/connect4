@@ -145,21 +145,40 @@ Explain your reasoning briefly, then respond with "MOVE: ${forcedCol}".`;
     console.log('🎲 STRATEGIC PLAY: No forced moves detected');
     const boardVisual = this.createBoardVisual(board);
     
+    // Add center preference analysis
+    const centerScore = this.evaluateCenterPreference(board, validMoves, player);
+    
     prompt = `You are a Connect Four expert AI playing as ${playerSymbol} (${player === 1 ? 'Red' : 'Yellow'}).
 
 BOARD (row 0 = bottom, pieces fall down):
 ${boardVisual}
 
 Available columns: ${validMoves.join(', ')}
+CENTER PREFERENCE ANALYSIS: ${centerScore}
 
-Play at an expert level. Think strategically about:
-1. Immediate wins and threats
-2. Creating multiple winning opportunities
-3. Controlling center columns
-4. Setting up future winning patterns
-5. Blocking opponent's strategic positions
+EXPERT STRATEGY GUIDE:
+🎯 PRIORITY ORDER:
+1. IMMEDIATE WINS: Always take a winning move if available
+2. BLOCK THREATS: Prevent opponent from winning next turn
+3. CREATE FORKS: Set up multiple winning threats simultaneously
+4. CONTROL CENTER: Column 3 is BEST, then 2&4, then 1&5, avoid 0&6
+5. BUILD CHAINS: Create sequences that lead to multiple win conditions
 
-Analyze the position step by step, then choose the best column (0-6) and respond with your reasoning followed by "MOVE: [column_number]".`;
+🧠 CRITICAL CENTER STRATEGY:
+• Column 3 (middle) = HIGHEST PRIORITY - connects in all 4 directions
+• Columns 2&4 = Second choice - good connectivity
+• Columns 1&5 = Third choice - limited but useful
+• Columns 0&6 = LAST RESORT - very limited connections
+
+🔍 DECISION PROCESS:
+1. If no immediate tactics needed, STRONGLY prefer column 3
+2. If column 3 unavailable, choose 2 or 4
+3. Only use edges (0,1,5,6) if center columns create opponent threats
+4. Build vertically in center for maximum diagonal potential
+
+REMEMBER: When in doubt between equal moves, ALWAYS choose the more central option!
+
+Analyze the position step by step, explain your reasoning focusing on center control, then respond with "MOVE: [column_number]".`;
 
     console.log('🤖 Hard Mode AI Prompt (STRATEGIC):');
     console.log('=====================================');
@@ -492,6 +511,23 @@ Analyze the position step by step, then choose the best column (0-6) and respond
     }
   }
 
+  private evaluateCenterPreference(board: number[][], validMoves: number[], player: number): string {
+    const preferences = [
+      { col: 3, name: "Column 3 (CENTER)", priority: "HIGHEST" },
+      { col: 2, name: "Column 2", priority: "HIGH" },
+      { col: 4, name: "Column 4", priority: "HIGH" },
+      { col: 1, name: "Column 1", priority: "MEDIUM" },
+      { col: 5, name: "Column 5", priority: "MEDIUM" },
+      { col: 0, name: "Column 0", priority: "LOW" },
+      { col: 6, name: "Column 6", priority: "LOW" }
+    ];
+    
+    const available = preferences.filter(p => validMoves.includes(p.col));
+    const best = available[0];
+    
+    return `Best available: ${best.name} (${best.priority} priority). Available in order: ${available.map(p => `${p.col}(${p.priority})`).join(', ')}`;
+  }
+
   private parseMove(text: string, validMoves: number[]): number {
     // First try to find "MOVE: X" pattern
     const moveMatch = text.match(/MOVE:\s*(\d+)/i);
@@ -513,7 +549,16 @@ Analyze the position step by step, then choose the best column (0-6) and respond
       }
     }
     
-    return validMoves[Math.floor(Math.random() * validMoves.length)];
+    // Final fallback: center preference instead of random
+    const centerPreference = [3, 2, 4, 1, 5, 0, 6];
+    for (const col of centerPreference) {
+      if (validMoves.includes(col)) {
+        console.log(`🎯 Parse fallback: Column ${col} (center preference)`);
+        return col;
+      }
+    }
+    
+    return validMoves[0];
   }
 }
 
